@@ -60,6 +60,7 @@ def list_volumes(project):
     instances = filter_instances(project)
 
     for i in instances:
+
         for v in i.volumes.all():
             print(", ".join((
             v.id,
@@ -75,7 +76,7 @@ def list_volumes(project):
 def instances():
         """Commands for instances"""
 
-@snapshots.command('snapshot',
+@instances.command('snapshot',
     help="Create snapshots of all volumes")
 
 @click.option('--project', default=None,
@@ -86,9 +87,21 @@ def create_snapshots(project):
     instances = filter_instances(project)
 
     for i in instances:
+        print("Stopping {0}...".format(i.id))
+
+        i.stop()
+        i.wait_until_stopped()
+
         for v in i.volumes.all():
-            print("Creating snapshot of {0}".format(v.id))
-            v.create_snapshots(Description="Created by Doun)")
+            print("    Creating snapshot of {0}".format(v.id))
+            v.create_snapshot(Description="Created by Doun")
+
+        print("starting {0}...".format(i.id))
+
+        i.start()
+        i.wait_until_running()
+
+    print("Job's done!")
 
     return
 
