@@ -18,5 +18,6 @@ shotty uses the configuration file created by th eAWS clo. e.g.
 `Pipenv run ""python brian/brian.py <command>
 <-- project=project>"`
 
-*command* is list, start or stop
+*command* is list, start or stop, instancesm volumes or snapshots
+*subcommand* - depends on command
 *project* is optional
