@@ -13,3 +13,10 @@ shotty uses the configuration file created by th eAWS clo. e.g.
 
 ## running
 `pipenv run python brian/brian.py`
+
+## running
+`Pipenv run ""python brian/brian.py <command>
+<-- project=project>"`
+
+*command* is list, start or stop
+*project* is optional
