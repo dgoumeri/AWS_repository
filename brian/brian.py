@@ -6,16 +6,23 @@ import click
 session = boto3.Session(profile_name='brian')
 ec2=session.resource('ec2')
 
-def filter_instances(project):
-        instances = []
+def filter_instances(project,instance):
+    instances = []
+    if instance is not None:
+        instance = [instance]
 
-        if project:
-            filters = [{'Name':'tag:Project','Values':[project]}]
-            instances = ec2.instances.filter(Filters=filters)
-        else:
-            instances = ec2.instances.all()
+    if project:
+        filters = [{'Name':'tag:Project','Values':[project]}]
+        instances = ec2.instances.filter(Filters=filters)
 
-        return instances
+    elif instance:
+        print("Test")
+        instances = ec2.instances.filter(InstanceIds=instance)
+
+    else:
+        instances = ec2.instances.all()
+
+    return instances
 
 def has_pending_snapshot(volume):
         snapshots = list(volume.snapshots.all())
@@ -23,6 +30,7 @@ def has_pending_snapshot(volume):
 
 @click.group()
 @click.option('--profile', default = None, help = 'enter your profile')
+
 def cli(profile):
         """Brian manages snapshots"""
 
@@ -54,6 +62,7 @@ def list_snapshots(project, list_all):
                 )))
 
                 if s.state =='completed' and not list_all: break
+
     return
 
 @cli.group('volumes')
@@ -94,34 +103,48 @@ def instances():
     help="Only instances for project (tag Project:<name>)")
 @click.option('--force', default = False, is_flag=True,
     help='Forces functions')
+@click.option('--instance', default=None, help = "Only one instance")
 
-def create_snapshots(project, force):
+def create_snapshots(project,instance,force):
     "Create snapshots for EC2 instances"
 
-    instances = filter_instances(project)
-
     if force == False and project == None:
-        print('Please try force or enter your project')
+        print("ERROR: please give up a project first or use force command")
         return
 
-    for i in instances:
-        print("Stopping {0}...".format(i.id))
+    instances = filter_instances(project, instance)
 
-        i.stop()
-        i.wait_until_stopped()
+    stopped = []
+    for i in instances:
+        if i.state['Name'] == 'stopped':
+            stopped.append(i.id)
+
+        if i.id not in stopped:
+            print("Stopping {0}...".format(i.id))
+            i.stop()
+            i.wait_until_stopped()
+        else:
+            print(i.id + " was already stopped")
 
         for v in i.volumes.all():
-            if has_pending_snapshot (v):
-                print(" Skipping {0}, snapshot already in progress" .format(v.id))
+            if has_pending_snapshot(v):
+                print("  Skipping {0}, snapshot already in progress".format(v.id))
                 continue
 
-            print("    Creating snapshot of {0}".format(v.id))
-            v.create_snapshot(Description="Created by Doun")
+            try:
+                print("   Creating snapshot of {0}".format(v.id))
+                v.create_snapshot(Description="Created by SnapshotAlyzer 30000")
 
-        print("starting {0}...".format(i.id))
+            except botocore.exceptions.ClientError as e:
+                print(" Could not create snapshot of {0}. ".format(i.id) + str(e))
+                continue
 
-        i.start()
-        i.wait_until_running()
+        if i.id not in stopped:
+            print("Starting {0}...".format(i.id))
+            i.start()
+            i.wait_until_running()
+        else:
+            print(i.id + " was already stopped, so will not be started")
 
     print("Job's done!")
 
@@ -131,17 +154,19 @@ def create_snapshots(project, force):
 @instances.command('list')
 @click.option('--project', default=None,
     help="Only instances for project (tag Project:<name>)")
-@click.option('--force', default = False, is_flag=True,
-    help='Forces functions')
+##@click.option('--force', default = False, is_flag=True,
+    ##help='Forces functions')
+@click.option('--instance', default=None, help = "Only one instance")
 
-def list_instances(project,force):
+def list_instances(project,instance):
     "List EC2 instances"
 
-    if force == False and project == None:
-        print('Please try force or enter your project')
-        return
+    #if force == False and project == None:
+    ##    print('Please try force or enter your project')
+    ##    return
 
-    instances = filter_instances(project)
+
+    instances = filter_instances(project, instance)
     for i in instances:
         tags = { t['Key']:t['Value'] for t in  i.tags or []}
         print(', '.join((
