@@ -22,7 +22,8 @@ def has_pending_snapshot(volume):
         return snapshots and snapshots[0].state == 'pending'
 
 @click.group()
-def cli():
+@click.option('--profile', default = None, help = 'enter your profile')
+def cli(profile):
         """Brian manages snapshots"""
 
 @cli.group('snapshots')
@@ -63,6 +64,7 @@ def volumes():
 @click.option('--project', default=None,
     help="Only volumes for project (tag Project:<name>)")
 
+
 def list_volumes(project):
     "List EC2 volumes"
 
@@ -90,10 +92,17 @@ def instances():
 
 @click.option('--project', default=None,
     help="Only instances for project (tag Project:<name>)")
-def create_snapshots(project):
+@click.option('--force', default = False, is_flag=True,
+    help='Forces functions')
+
+def create_snapshots(project, force):
     "Create snapshots for EC2 instances"
 
     instances = filter_instances(project)
+
+    if force == False and project == None:
+        print('Please try force or enter your project')
+        return
 
     for i in instances:
         print("Stopping {0}...".format(i.id))
@@ -122,9 +131,15 @@ def create_snapshots(project):
 @instances.command('list')
 @click.option('--project', default=None,
     help="Only instances for project (tag Project:<name>)")
+@click.option('--force', default = False, is_flag=True,
+    help='Forces functions')
 
-def list_instances(project):
+def list_instances(project,force):
     "List EC2 instances"
+
+    if force == False and project == None:
+        print('Please try force or enter your project')
+        return
 
     instances = filter_instances(project)
     for i in instances:
@@ -143,9 +158,15 @@ def list_instances(project):
 @instances.command('stop')
 @click.option('--project', default =None,
     help='Only instances for project')
+@click.option('--force', default = False, is_flag=True,
+    help='Forces functions')
 
-def stop_instances(project):
+def stop_instances(project, force):
     "Stop EC2 instances"
+
+    if force == False and project == None:
+        print('Please try force or enter your project')
+        return
 
     instances = filter_instances(project)
     for i in instances:
@@ -160,9 +181,16 @@ def stop_instances(project):
 @instances.command('start')
 @click.option('--project', default =None,
     help='Only instances for project')
+@click.option('--force', default = False, is_flag=True,
+    help='Forces functions')
 
-def start_instances(project):
+
+def start_instances(project, force):
     "Start EC2 instances"
+
+    if force == False and project == None:
+        print('Please try force or enter your project')
+        return
 
     instances = filter_instances(project)
     for i in instances:
@@ -173,6 +201,29 @@ def start_instances(project):
                 print("Could not start {0}. ".format(i.id) + str(e))
                 continue
 
+    return
+
+@instances.command('reboot')
+@click.option('--project', default =None,
+    help='Only instances for project')
+@click.option('--force', default = False, is_flag=True,
+    help='Forces functions')
+
+def reboot_instances(project,force):
+    "Reboot EC2 instances"
+
+    if force == False and project == None:
+        print('Please try force or enter your project')
+        return
+
+    instances = filter_instances(project)
+    for i in instances:
+        print("Reboot {0}...".format(i.id))
+        try:
+            i.reboot()
+        except botocore.exceptions.ClientError as e:
+            print("Could not stop {0}. ".format(i.id) + str(e))
+            continue
     return
 
 if __name__ =='__main__':
